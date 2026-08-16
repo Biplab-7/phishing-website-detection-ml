@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phishing Website Detector</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { 
+      color-scheme: light; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #fff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    body { 
+      margin: 0; 
+      background: linear-gradient(135deg, var(--bg) 0%, #f1f5f9 100%);
+      color: var(--text-primary); 
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    
+    .logo {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    h1 { 
+      margin: 0;
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+    
+    .intro { 
+      color: var(--text-secondary); 
+      font-size: 1.05rem;
+      margin-top: 0.75rem;
+      line-height: 1.6;
+    }
+    
+    main { 
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      padding: 2.5rem;
+      border: 1px solid var(--border);
+    }
+    
+    #prediction-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
+    label { 
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    input { 
+      padding: 0.875rem 1.25rem;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font: inherit;
+      transition: all 0.3s ease;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 1rem;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      background: rgba(99, 102, 241, 0.02);
+    }
+    
+    input::placeholder {
+      color: #94a3b8;
+    }
+    
+    button { 
+      padding: 1rem 2rem;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-md);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    button:disabled { 
+      background: #cbd5e1;
+      cursor: not-allowed;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    #result { 
+      margin-top: 2rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      display: none;
+      border: 2px solid;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    #result.success { 
+      display: block;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+      color: #065f46;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    
+    #result.phishing { 
+      display: block;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+      color: #7f1d1d;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    #result.uncertain { 
+      display: block;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+      color: #78350f;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    
+    #result.error { 
+      display: block;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+      color: #7f1d1d;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    .result-title { 
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .result-icon {
+      font-size: 1.75rem;
+    }
+    
+    .confidence-section {
+      margin-top: 1.25rem;
+    }
+    
+    .confidence-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .confidence-track { 
+      height: 8px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    
+    .confidence-bar { 
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    #result.success .confidence-bar { background: var(--success); }
+    #result.phishing .confidence-bar { background: var(--danger); }
+    #result.uncertain .confidence-bar { background: var(--warning); }
+    
+    .result-note { 
+      margin: 1rem 0 0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      font-style: italic;
+      opacity: 0.9;
+    }
+    
+    .result-list { 
+      margin: 1.25rem 0 0;
+      padding-left: 1.5rem;
+      list-style: none;
+    }
+    
+    .result-list li {
+      margin: 0.5rem 0;
+      padding-left: 1.75rem;
+      position: relative;
+    }
+    
+    .result-list li:before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+    }
+    
+    footer { 
+      margin-top: 3rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    
+    .notice { 
+      padding: 1.25rem;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+      color: #78350f;
+      border: 2px solid rgba(245, 158, 11, 0.3);
+      font-weight: 500;
+    }
+    
+    .loading-indicator {
+      display: inline-block;
+      width: 1.25rem;
+      height: 1.25rem;
+      vertical-align: middle;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 640px) {
+      main {
+        padding: 1.5rem;
+      }
+      
+      h1 {
+        font-size: 1.875rem;
+      }
+      
+      button {
+        padding: 0.875rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🛡️</div>
+      <h1>Phishing Detector</h1>
+      <p class="intro">Enter a website URL to check if it's potentially a phishing site. Our detection model analyzes the URL in real-time.</p>
+    </div>
+    
+    <main>
+      {% if not model_ready %}
+        <p class="notice">{{ error }}</p>
+      {% else %}
+        <form id="prediction-form">
+          <label for="url">
+            Website URL
+            <input id="url" name="url" type="text" inputmode="url" placeholder="https://example.com" required>
+          </label>
+          <button type="submit">Analyze Website</button>
+        </form>
+        <div id="result" aria-live="polite"></div>
+      {% endif %}
+    </main>
+    
+    <footer>Powered by Machine Learning • Real-time Phishing Detection</footer>
+  </div>
+  {% if model_ready %}
+  <script>
+    const form = document.getElementById('prediction-form');
+    const result = document.getElementById('result');
+    
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(form).entries());
+      result.className = '';
+      result.style.display = 'block';
+      result.innerHTML = '<p style="color: inherit; margin: 0;"><span class="loading-indicator">⏳</span> Analyzing website...</p>';
+      
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST', 
+          headers: {'Content-Type': 'application/json'}, 
+          body: JSON.stringify(values)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Prediction failed.');
+        
+        result.className = data.uncertain ? 'uncertain' : (data.prediction === 'Phishing' ? 'phishing' : 'success');
+        result.replaceChildren();
+        
+        // Determine icon based on prediction
+        const icons = {
+          'Phishing': '🚨',
+          'Legitimate': '✅'
+        };
+        const icon = data.uncertain ? '⚠️' : icons[data.prediction] || '🔍';
+        
+        const title = document.createElement('p');
+        title.className = 'result-title';
+        title.innerHTML = `<span class="result-icon">${icon}</span> Prediction: <strong>${data.prediction}</strong>`;
+        
+        const confidenceSection = document.createElement('div');
+        confidenceSection.className = 'confidence-section';
+        
+        const confidenceLabel = document.createElement('div');
+        confidenceLabel.className = 'confidence-label';
+        confidenceLabel.innerHTML = '<span>Model Confidence</span><span><strong>' + data.confidence + '%</strong></span>';
+        
+        const track = document.createElement('div');
+        track.className = 'confidence-track';
+        const bar = document.createElement('div');
+        bar.className = 'confidence-bar';
+        bar.style.width = '0%';
+        track.appendChild(bar);
+        
+        confidenceSection.append(confidenceLabel, track);
+        result.append(title, confidenceSection);
+        
+        // Animate confidence bar
+        setTimeout(() => {
+          bar.style.width = `${data.confidence}%`;
+        }, 100);
+        
+        if (data.uncertain) {
+          const note = document.createElement('p');
+          note.className = 'result-note';
+          note.textContent = '⚠️ This result is uncertain and should be reviewed manually.';
+          result.appendChild(note);
+        }
+        
+        if (data.explanation?.length) {
+          const heading = document.createElement('p');
+          heading.style.fontWeight = '600';
+          heading.style.marginBottom = '0.75rem';
+          heading.style.marginTop = '1.5rem';
+          heading.textContent = '🔍 Detected Indicators:';
+          
+          const list = document.createElement('ul');
+          list.className = 'result-list';
+          data.explanation.forEach((item) => {
+            const entry = document.createElement('li');
+            entry.textContent = item;
+            list.appendChild(entry);
+          });
+          result.append(heading, list);
+        }
+        
+        if (data.warning) {
+          const note = document.createElement('p');
+          note.className = 'result-note';
+          note.textContent = '💡 ' + data.warning;
+          result.appendChild(note);
+        }
+      } catch (error) {
+        result.className = 'error';
+        result.innerHTML = `<p style="margin: 0;"><span style="font-size: 1.5rem; margin-right: 0.75rem;">❌</span><strong>Error:</strong> ${error.message}</p>`;
+      }
+    });
+  </script>
+  {% endif %}
+</body>
+</html>
